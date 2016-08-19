@@ -1,6 +1,11 @@
-# hydra
+# Hydra
 CLI tool for starting tests servers for microservices. Used for integration tests.
 
+## Installation
+
+```bash
+go get -u github.com/br0r/hydra
+```
 
 ## Structure for .yml file
 
