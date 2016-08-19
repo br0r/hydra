@@ -7,52 +7,23 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	//"strings"
+	"strconv"
 
+	"./config"
 	"flag"
-
-	"gopkg.in/yaml.v2"
 )
 
 const help string = `Usage:
-hydra COMMAND [OPTIONS]
+hydra [OPTIONS] COMMAND
 
 Commands:
   init - Create hydra project [--clean]
   start - Start hydra servers
 `
 
-const file_name string = ".hydra.yml"
-
-type Config struct {
-	Services []struct {
-		Path   string
-		Start  string
-		Config struct {
-			Src  string
-			Dest string
-		}
-		Env map[string]string
-	}
-}
-
-func initialize() {
-	var clean = flag.Bool("clean", false, "If we want a clean run")
-	flag.Parse()
-
-	d, e := ioutil.ReadFile(file_name)
-	if e != nil {
-		log.Fatal(e)
-		os.Exit(1)
-	}
-
-	c := Config{}
-	err := yaml.Unmarshal(d, &c)
-	if err != nil {
-		log.Fatalf("error: %v", err)
-		os.Exit(1)
-	}
-
-	if *clean {
+func initialize(c config.Config, clean bool) {
+	if clean {
 		_, e := exec.Command("rm", "-rf", ".hydra").Output()
 		if e != nil {
 			log.Fatal(e)
@@ -68,16 +39,20 @@ func initialize() {
 		base := path.Join(".hydra/", name)
 		if _, err := os.Stat(base); os.IsNotExist(err) {
 			fmt.Println("Creating", name)
-			_, e := exec.Command("cp", "-R", p, base).Output()
+			e := exec.Command("cp", "-R", p, base).Run()
+
 			if e != nil {
 				log.Fatal(e)
 			}
+
+			git := path.Join(base, ".git")
+			exec.Command("rm", "-rf", git).Run()
 
 			if service.Config.Dest != "" && service.Config.Src != "" {
 				u := path.Join(base, service.Config.Dest)
 				cf := service.Config.Src
 
-				_, err := exec.Command("cp", cf, u).Output()
+				err := exec.Command("cp", cf, u).Run()
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -86,18 +61,78 @@ func initialize() {
 	}
 }
 
-func start() {
+func start(conf config.Config) {
 	fmt.Println("Starting")
+	for i := 0; i < len(conf.Services); i += 1 {
+		service := conf.Services[i]
+		_, name := path.Split(service.Path)
+
+		env := os.Environ()
+		for k, v := range service.Env {
+			env = append(env, fmt.Sprintf("%s=%s", k, v))
+		}
+
+		//cmd := exec.Command(strings.Split(conf.Services[i].Start, " ")...)
+		fmt.Println("Starting", name)
+		cmd := exec.Command("/usr/bin/env", "node", "./src/server.js", "&")
+		cmd.Env = env
+		cmd.Dir = path.Join(".hydra", name)
+		cmd.Stderr = os.Stderr
+
+		e := cmd.Start()
+		fmt.Printf("%d\n", cmd.Process.Pid)
+		pid := []byte(strconv.Itoa(cmd.Process.Pid))
+		ioutil.WriteFile("pid", pid, 0440)
+
+		if e != nil {
+			os.Remove("pid")
+			log.Fatal("Error with", name, e)
+		}
+
+		fmt.Printf("Started: %s\n", name)
+		/*
+			e = cmd.Wait()
+			if e != nil {
+				log.Fatal(e)
+			}
+		*/
+	}
+}
+
+func kill(conf config.Config) {
+	for i := 0; i < len(conf.Services); i += 1 {
+		service := conf.Services[i]
+		_, name := path.Split(service.Path)
+		pid_file := path.Join(".hype", name, "pid")
+		if _, err := os.Stat(pid_file); os.IsExist(err) {
+			bytes, e := ioutil.ReadFile(pid_file)
+			if e != nil {
+				log.Fatal(e)
+			}
+			pid := string(bytes)
+			e = exec.Command("kill", pid).Run()
+			if e != nil {
+				log.Fatal(e)
+			}
+
+			fmt.Printf("Killed %s", name)
+		}
+	}
 }
 
 func main() {
-	args := os.Args[1:]
-	if len(args) > 0 {
-		switch args[0] {
+	var c config.Config = config.ReadConfig()
+	var clean = flag.Bool("clean", false, "If we want a clean run")
+	flag.Parse()
+
+	if cmd := flag.Arg(0); cmd != "" {
+		switch cmd {
 		case "init":
-			initialize()
+			initialize(c, *clean)
 		case "start":
-			start()
+			start(c)
+		case "kill":
+			kill(c)
 		default:
 			fmt.Println(help)
 		}
