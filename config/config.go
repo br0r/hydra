@@ -17,7 +17,8 @@ type Config struct {
 			Src  string
 			Dest string
 		}
-		Env map[string]string
+		Env     map[string]string
+		Install string
 	}
 }
 

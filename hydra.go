@@ -7,8 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	//"strings"
 	"strconv"
+	"strings"
 
 	"./config"
 	"flag"
@@ -58,6 +58,17 @@ func initialize(c config.Config, clean bool) {
 					log.Fatal(err)
 				}
 			}
+
+			if service.Install != "" {
+				args := strings.Split(service.Install, " ")
+				cmd := exec.Command(args[0], args[1:]...)
+
+				cmd.Dir = base
+				e := cmd.Run()
+				if e != nil {
+					log.Fatal(e)
+				}
+			}
 		}
 	}
 }
@@ -80,9 +91,9 @@ func start(conf config.Config) {
 			env = append(env, fmt.Sprintf("%s=%s", k, v))
 		}
 
-		//cmd := exec.Command(strings.Split(conf.Services[i].Start, " ")...)
 		fmt.Println("Starting", name)
-		cmd := exec.Command("/usr/bin/env", "node", "./src/server.js")
+		args := strings.Split(conf.Services[i].Start, " ")
+		cmd := exec.Command(args[0], args[1:]...)
 		cmd.Env = env
 		cmd.Dir = cmdRunDir
 		cmd.Stderr = os.Stderr
