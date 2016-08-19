@@ -20,6 +20,7 @@ hydra [OPTIONS] COMMAND
 Commands:
   init - Create hydra project [--clean]
   start - Start hydra servers
+  kill - Kills started servers
 `
 
 func initialize(c config.Config, clean bool) {
@@ -67,6 +68,13 @@ func start(conf config.Config) {
 		service := conf.Services[i]
 		_, name := path.Split(service.Path)
 
+		cmdRunDir := path.Join(".hydra", name)
+		pid_file := path.Join(cmdRunDir, "pid")
+		if _, err := os.Stat(pid_file); !os.IsNotExist(err) {
+			fmt.Printf("%s is already started, run hydra kill if you want to restart\n", name)
+			continue
+		}
+
 		env := os.Environ()
 		for k, v := range service.Env {
 			env = append(env, fmt.Sprintf("%s=%s", k, v))
@@ -74,28 +82,19 @@ func start(conf config.Config) {
 
 		//cmd := exec.Command(strings.Split(conf.Services[i].Start, " ")...)
 		fmt.Println("Starting", name)
-		cmd := exec.Command("/usr/bin/env", "node", "./src/server.js", "&")
+		cmd := exec.Command("/usr/bin/env", "node", "./src/server.js")
 		cmd.Env = env
-		cmd.Dir = path.Join(".hydra", name)
+		cmd.Dir = cmdRunDir
 		cmd.Stderr = os.Stderr
 
 		e := cmd.Start()
-		fmt.Printf("%d\n", cmd.Process.Pid)
 		pid := []byte(strconv.Itoa(cmd.Process.Pid))
-		ioutil.WriteFile("pid", pid, 0440)
+		ioutil.WriteFile(pid_file, pid, 0440)
 
 		if e != nil {
 			os.Remove("pid")
 			log.Fatal("Error with", name, e)
 		}
-
-		fmt.Printf("Started: %s\n", name)
-		/*
-			e = cmd.Wait()
-			if e != nil {
-				log.Fatal(e)
-			}
-		*/
 	}
 }
 
@@ -103,19 +102,18 @@ func kill(conf config.Config) {
 	for i := 0; i < len(conf.Services); i += 1 {
 		service := conf.Services[i]
 		_, name := path.Split(service.Path)
-		pid_file := path.Join(".hype", name, "pid")
-		if _, err := os.Stat(pid_file); os.IsExist(err) {
+		pid_file := path.Join(".hydra", name, "pid")
+		if _, err := os.Stat(pid_file); !os.IsNotExist(err) {
 			bytes, e := ioutil.ReadFile(pid_file)
 			if e != nil {
-				log.Fatal(e)
+				log.Fatalf("Error when reading file %v", e)
 			}
 			pid := string(bytes)
-			e = exec.Command("kill", pid).Run()
-			if e != nil {
-				log.Fatal(e)
+			exec.Command("kill", pid).Run()
+			if e == nil {
+				fmt.Printf("Killed %s\n", name)
 			}
-
-			fmt.Printf("Killed %s", name)
+			os.Remove(pid_file)
 		}
 	}
 }
