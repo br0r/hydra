@@ -14,6 +14,7 @@ import (
 	"flag"
 )
 
+const BASE_DIR string = ".hydra"
 const help string = `Usage:
 hydra [OPTIONS] COMMAND
 
@@ -21,6 +22,7 @@ Commands:
   init - Create hydra project [--clean]
   start - Start hydra servers
   kill - Kills started servers
+  ls - Show started servers
 `
 
 func initialize(c config.Config, clean bool) {
@@ -129,6 +131,21 @@ func kill(conf config.Config) {
 	}
 }
 
+func ls(conf config.Config) {
+	for _, service := range conf.Services {
+		_, name := path.Split(service.Path)
+		pid_path := path.Join(BASE_DIR, name, "pid")
+		if _, err := os.Stat(pid_path); !os.IsNotExist(err) {
+			bytes, e := ioutil.ReadFile(pid_path)
+			if e != nil {
+				log.Fatal(e)
+			}
+			pid := string(bytes)
+			fmt.Printf("%s running on pid: %s\n", name, pid)
+		}
+	}
+}
+
 func main() {
 	var c config.Config = config.ReadConfig()
 	var clean = flag.Bool("clean", false, "If we want a clean run")
@@ -142,6 +159,8 @@ func main() {
 			start(c)
 		case "kill":
 			kill(c)
+		case "ls":
+			ls(c)
 		default:
 			fmt.Println(help)
 		}
