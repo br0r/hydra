@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"./config"
 	"flag"
+	"github.com/br0r/hydra/config"
 )
 
 const BASE_DIR string = ".hydra"
