@@ -38,11 +38,17 @@ func initialize(c config.Config, clean bool) {
 	for i := 0; i < len(c.Services); i += 1 {
 		service := c.Services[i]
 		p := service.Path
-		_, name := path.Split(p)
+		name := service.Name
 		base := path.Join(".hydra/", name)
 		if _, err := os.Stat(base); os.IsNotExist(err) {
 			fmt.Println("Creating", name)
-			e := exec.Command("cp", "-R", p, base).Run()
+
+			var e error
+			if strings.Index(p, "git@") == 0 {
+				e = exec.Command("git", "clone", p, base).Run()
+			} else {
+				e = exec.Command("cp", "-R", p, base).Run()
+			}
 
 			if e != nil {
 				log.Fatal(e)
@@ -79,7 +85,7 @@ func start(conf config.Config) {
 	fmt.Println("Starting")
 	for i := 0; i < len(conf.Services); i += 1 {
 		service := conf.Services[i]
-		_, name := path.Split(service.Path)
+		name := service.Name
 
 		cmdRunDir := path.Join(".hydra", name)
 		pid_file := path.Join(cmdRunDir, "pid")
@@ -114,7 +120,7 @@ func start(conf config.Config) {
 func kill(conf config.Config) {
 	for i := 0; i < len(conf.Services); i += 1 {
 		service := conf.Services[i]
-		_, name := path.Split(service.Path)
+		name := service.Name
 		pid_file := path.Join(".hydra", name, "pid")
 		if _, err := os.Stat(pid_file); !os.IsNotExist(err) {
 			bytes, e := ioutil.ReadFile(pid_file)
@@ -133,7 +139,7 @@ func kill(conf config.Config) {
 
 func ls(conf config.Config) {
 	for _, service := range conf.Services {
-		_, name := path.Split(service.Path)
+		name := service.Name
 		pid_path := path.Join(BASE_DIR, name, "pid")
 		if _, err := os.Stat(pid_path); !os.IsNotExist(err) {
 			bytes, e := ioutil.ReadFile(pid_path)

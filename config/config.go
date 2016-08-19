@@ -11,6 +11,7 @@ const config_file_name string = ".hydra.yml"
 
 type Config struct {
 	Services []struct {
+		Name   string
 		Path   string
 		Start  string
 		Config struct {
