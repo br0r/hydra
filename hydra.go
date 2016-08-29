@@ -83,15 +83,16 @@ func initialize(c config.Config, clean bool) {
 }
 
 func start(conf config.Config) {
-	fmt.Println("Starting")
 	for i := 0; i < len(conf.Services); i += 1 {
 		service := conf.Services[i]
 		name := service.Name
 
 		cmdRunDir := path.Join(".hydra", name)
 		pid_file := path.Join(cmdRunDir, "pid")
+		log_file_path := path.Join(cmdRunDir, "log")
+
 		if _, err := os.Stat(pid_file); !os.IsNotExist(err) {
-			fmt.Printf("%s is already started, run hydra kill if you want to restart\n", name)
+			fmt.Printf("%s is already started, run hydra stop if you want to restart\n", name)
 			continue
 		}
 
@@ -102,12 +103,26 @@ func start(conf config.Config) {
 
 		fmt.Println("Starting", name)
 		args := strings.Split(conf.Services[i].Start, " ")
+		args = append(args, "2>&1 1> log")
 		cmd := exec.Command(args[0], args[1:]...)
 		cmd.Env = env
 		cmd.Dir = cmdRunDir
-		cmd.Stderr = os.Stderr
 
-		e := cmd.Start()
+		log_file, e := os.OpenFile(log_file_path, os.O_RDWR, 0666)
+		if e != nil {
+			log.Fatal(e)
+		}
+
+		_, e = log_file.WriteString(fmt.Sprintf("%s:\n", name))
+		if e != nil {
+			log.Fatal(e)
+		}
+
+		defer log_file.Close()
+		cmd.Stdout = log_file
+		cmd.Stderr = log_file
+
+		e = cmd.Start()
 		pid := []byte(strconv.Itoa(cmd.Process.Pid))
 		ioutil.WriteFile(pid_file, pid, 0440)
 
@@ -115,6 +130,7 @@ func start(conf config.Config) {
 			os.Remove("pid")
 			log.Fatal("Error with", name, e)
 		}
+
 	}
 }
 
@@ -153,7 +169,7 @@ func ls(conf config.Config) {
 	}
 }
 
-func logs(conf config.Config, string []servers) {
+func logs(conf config.Config, servers []string) {
 	for _, service := range conf.Services {
 		if len(servers) > 0 {
 			err := false
@@ -167,6 +183,13 @@ func logs(conf config.Config, string []servers) {
 				continue
 			}
 		}
+
+		logfile := path.Join(".hydra/", service.Name, "log")
+		data, err := ioutil.ReadFile(logfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(string(data))
 	}
 }
 
@@ -186,7 +209,7 @@ func main() {
 		case "ls":
 			ls(c)
 		case "logs":
-			logs(c, flag.Args)
+			logs(c, flag.Args()[1:])
 		default:
 			fmt.Println(help)
 		}
