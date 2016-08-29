@@ -108,7 +108,7 @@ func start(conf config.Config) {
 		cmd.Env = env
 		cmd.Dir = cmdRunDir
 
-		log_file, e := os.OpenFile(log_file_path, os.O_RDWR, 0666)
+		log_file, e := os.Create(log_file_path)
 		if e != nil {
 			log.Fatal(e)
 		}
