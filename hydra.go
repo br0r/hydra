@@ -21,8 +21,9 @@ hydra [OPTIONS] COMMAND
 Commands:
   init - Create hydra project [--clean]
   start - Start hydra servers
-  kill - Kills started servers
+  stop - Stops started servers
   ls - Show started servers
+  logs [name] - Show logs for servers, or for specific server given by name
 `
 
 func initialize(c config.Config, clean bool) {
@@ -152,6 +153,23 @@ func ls(conf config.Config) {
 	}
 }
 
+func logs(conf config.Config, string []servers) {
+	for _, service := range conf.Services {
+		if len(servers) > 0 {
+			err := false
+			for _, name := range servers {
+				if name != service.Name {
+					err = true
+					break
+				}
+			}
+			if err == true {
+				continue
+			}
+		}
+	}
+}
+
 func main() {
 	var c config.Config = config.ReadConfig()
 	var clean = flag.Bool("clean", false, "If we want a clean run")
@@ -163,10 +181,12 @@ func main() {
 			initialize(c, *clean)
 		case "start":
 			start(c)
-		case "kill":
+		case "stop":
 			kill(c)
 		case "ls":
 			ls(c)
+		case "logs":
+			logs(c, flag.Args)
 		default:
 			fmt.Println(help)
 		}
