@@ -165,6 +165,8 @@ func ls(conf config.Config) {
 			}
 			pid := string(bytes)
 			fmt.Printf("%s running on pid: %s\n", name, pid)
+		} else {
+			fmt.Printf("%s is not running\n", name)
 		}
 	}
 }
