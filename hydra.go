@@ -28,6 +28,7 @@ Commands:
 
 func initialize(c config.Config, clean bool) {
 	if clean {
+		kill(c)
 		_, e := exec.Command("rm", "-rf", ".hydra").Output()
 		if e != nil {
 			log.Fatal(e)
