@@ -7,6 +7,18 @@ CLI tool for starting tests servers for microservices. Used for integration test
 go get -u github.com/br0r/hydra
 ```
 
+## Usage
+```
+hydra [OPTIONS] COMMAND
+
+Commands:  
+  init - Create hydra project [--clean]  
+  start - Start hydra servers  
+  stop - Stops started servers  
+  ls - Show started servers  
+  logs [name] - Show logs for servers, or for specific server given by name   
+```
+
 ## Structure for .yml file
 
 *.hydra.yml*
