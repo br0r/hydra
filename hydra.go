@@ -197,9 +197,18 @@ func logs(conf config.Config, servers []string) {
 }
 
 func main() {
-	var c config.Config = config.ReadConfig()
+	flag.Usage = func() {
+		fmt.Println(help)
+	}
+
 	var clean = flag.Bool("clean", false, "If we want a clean run")
 	flag.Parse()
+
+	c, e := config.ReadConfig()
+	if e != nil {
+		fmt.Println(help)
+		log.Fatal("Couldn't find a config file, make sure you are in correct dir. Currently need to be in same dir as .hydra.yml")
+	}
 
 	if cmd := flag.Arg(0); cmd != "" {
 		switch cmd {

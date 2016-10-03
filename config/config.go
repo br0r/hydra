@@ -3,8 +3,6 @@ package config
 import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
-	"log"
-	"os"
 )
 
 const config_file_name string = ".hydra.yml"
@@ -23,19 +21,17 @@ type Config struct {
 	}
 }
 
-func ReadConfig() Config {
+func ReadConfig() (Config, error) {
+	c := Config{}
 	d, e := ioutil.ReadFile(config_file_name)
 	if e != nil {
-		log.Fatal(e)
-		os.Exit(1)
+		return c, e
 	}
 
-	c := Config{}
 	err := yaml.Unmarshal(d, &c)
 	if err != nil {
-		log.Fatalf("error: %v", err)
-		os.Exit(1)
+		return c, err
 	}
 
-	return c
+	return c, nil
 }
